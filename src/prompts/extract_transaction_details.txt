@@ -1,0 +1,11 @@
+Extract the transaction details from {msg} using this JSON schema:
+transactionDetails = {
+    'recipientName': 'John Doe',
+    'amount': '',
+    'transactionType': '',
+    'paymentMethod': '',
+    'date': ''
+    'description': ''
+}
+
+return: transactionDetails
