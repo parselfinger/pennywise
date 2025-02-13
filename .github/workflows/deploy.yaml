@@ -1,0 +1,46 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Install Poetry
+      run: |
+        pip install poetry
+
+    - name: Install dependencies
+      run: |
+        poetry export -f requirements.txt --without-hashes -o requirements.txt
+        mkdir package
+        pip install --target package -r requirements.txt
+
+    - name: Package Lambda
+      run: |
+        cd package
+        zip -r ../function.zip .
+        cd ..
+        zip -g function.zip src/process_txn_email.py
+
+    - name: Deploy to AWS Lambda
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+      run: |
+        aws lambda update-function-code \
+          --function-name process-txn-email \
+          --zip-file fileb://function.zip
