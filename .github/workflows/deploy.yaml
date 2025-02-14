@@ -39,6 +39,14 @@ jobs:
         cd ..
         zip -g function.zip src/process_txn_email.py
 
+    - name: Upload to S3
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+      run: |
+        aws s3 cp function.zip s3://pennywise-lambda-deploy/process_txn_email.zip
+
     - name: Deploy to AWS Lambda
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -47,4 +55,5 @@ jobs:
       run: |
         aws lambda update-function-code \
           --function-name process-txn-email \
-          --zip-file fileb://function.zip
+          --s3-bucket pennywise-lambda-deploy \
+          --s3-key process_txn_email.zip
