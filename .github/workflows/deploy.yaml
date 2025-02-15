@@ -37,7 +37,7 @@ jobs:
         cd package
         zip -r ../function.zip .
         cd ..
-        zip -g function.zip src/process_txn_email.py
+        zip -g function.zip src/*
 
     - name: Upload to S3
       env:
