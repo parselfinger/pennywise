@@ -37,7 +37,8 @@ jobs:
         cd package
         zip -r ../function.zip .
         cd ..
-        zip -g function.zip src/*
+        cd src
+        zip -g -r ../function.zip .
 
     - name: Upload to S3
       env:
