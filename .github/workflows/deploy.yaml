@@ -45,7 +45,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ vars.AWS_REGION }}
       run: |
-        aws s3 cp function.zip s3://pennywise-lambda-deploy/process_txn_email.zip
+        aws s3 cp function.zip s3://{{vars.LAMBDA_PACKAGE_BUCKET}}/process_txn_email.zip
 
     - name: Deploy to AWS Lambda
       env:
