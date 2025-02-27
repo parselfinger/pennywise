@@ -6,44 +6,28 @@ on:
       - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.12
-
-    - name: Install Poetry
+    - name: Build in Amazon Linux Container
       run: |
-        pip install poetry
-
-    - name: Install Poetry Plugin for Export
-      run: |
-        poetry self add poetry-plugin-export
-
-    - name: Export dependencies to requirements.txt
-      run: |
-        poetry export -f requirements.txt --without-hashes -o requirements.txt
-        cat requirements.txt  # Debugging: Print the file content
-
-    - name: Install dependencies inside Amazon Linux
-      run: |
-        docker run --rm -v $(pwd):/app -w /app amazonlinux:latest /bin/bash -c "
-          yum install -y python3 python3-pip zip &&
-          pip3 install --target package -r requirements.txt"
-
-    - name: Package Lambda
-      run: |
-        cd package
-        zip -r ../function.zip .
-        cd ..
-        cd src
-        zip -g -r ../function.zip .
+        docker run --rm -v $(pwd):/lambda-build -w /lambda-build \
+          amazonlinux:2023 /bin/bash -c "
+          yum install -y python3-pip zip &&
+          pip3 install --upgrade pip &&
+          pip3 install poetry &&
+          poetry export -f requirements.txt --without-hashes -o requirements.txt &&
+          mkdir -p package &&
+          pip3 install --target package -r requirements.txt &&
+          cd package &&
+          zip -r ../function.zip . &&
+          cd ../src &&
+          zip -g -r ../function.zip .
+        "
 
     - name: Upload to S3
       env:
@@ -53,6 +37,11 @@ jobs:
       run: |
         aws s3 cp function.zip s3://${{vars.LAMBDA_PACKAGE_BUCKET}}/process_txn_email.zip
 
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
     - name: Deploy to AWS Lambda
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
