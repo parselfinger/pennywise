@@ -18,7 +18,7 @@ jobs:
         docker run --rm -v $(pwd):/lambda-build -w /lambda-build \
           amazonlinux:2023 /bin/bash -c "
           yum install -y python3-pip zip &&
-          pip3 install --upgrade pip &&
+          python3 -m pip install --upgrade --break-system-packages pip &&
           pip3 install poetry &&
           poetry export -f requirements.txt --without-hashes -o requirements.txt &&
           mkdir -p package &&
