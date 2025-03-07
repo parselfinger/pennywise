@@ -21,6 +21,7 @@ jobs:
           pip3 install poetry && poetry self add poetry-plugin-export &&
           poetry export -f requirements.txt --without-hashes -o requirements.txt &&
           mkdir -p package &&
+          pip install -r /lambda-build/requirements.txt -t /lambda-build/package
           cd package &&
           pwd &&
           ls -la  # Verify files exist &&
