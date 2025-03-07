@@ -24,12 +24,12 @@ jobs:
           pwd  # Check current directory &&
           ls -la  # Verify files exist &&
           exit 0
+        "
 #          pip3 install --target package -r requirements.txt &&
 #          cd package &&
 #          zip -r ../function.zip . &&
 #          cd ../src &&
 #          zip -g -r ../function.zip .
-        "
 
     - name: Upload to S3
       env:
