@@ -18,10 +18,10 @@ jobs:
         docker run --rm -v $(pwd):/lambda-build -w /lambda-build \
           amazonlinux:2023 /bin/bash -c "
           yum install -y python3.12 python3.12-pip zip &&
-          pip3 install poetry && poetry self add poetry-plugin-export &&
+          python3.12 -m pip install poetry && poetry self add poetry-plugin-export &&
           poetry export -f requirements.txt --without-hashes -o requirements.txt &&
           mkdir -p package &&
-          pip3 install --target package -r requirements.txt &&
+          python3.12 -m pip install --target package -r requirements.txt &&
           cd package &&
           zip -r ../function.zip . &&
           cd ../src &&
