@@ -21,8 +21,9 @@ jobs:
           pip3 install poetry && poetry self add poetry-plugin-export &&
           poetry export -f requirements.txt --without-hashes -o requirements.txt &&
           mkdir -p package &&
-          pwd  # Check current directory &&
-          cd package && ls -la  # Verify files exist &&
+          cd package &&
+          pwd &&
+          ls -la  # Verify files exist &&
           exit 0
         "
 #          pip3 install --target package -r requirements.txt &&
