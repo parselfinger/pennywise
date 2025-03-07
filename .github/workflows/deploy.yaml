@@ -22,7 +22,7 @@ jobs:
           poetry export -f requirements.txt --without-hashes -o requirements.txt &&
           mkdir -p package &&
           pwd  # Check current directory &&
-          ls -la  # Verify files exist &&
+          cd package && ls -la  # Verify files exist &&
           exit 0
         "
 #          pip3 install --target package -r requirements.txt &&
