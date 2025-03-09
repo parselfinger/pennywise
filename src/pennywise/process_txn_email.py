@@ -7,7 +7,7 @@ from pathlib import Path
 import boto3
 import google.generativeai as genai
 
-from src.config import GEMINI_API_KEY, TXN_EMAILS_BUCKET_NAME
+from pennywise.config import GEMINI_API_KEY, TXN_EMAILS_BUCKET_NAME
 
 genai.configure(api_key=GEMINI_API_KEY)
 

@@ -4,7 +4,7 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from src.config import TXN_EMAILS_BUCKET_NAME
+from pennywise.config import TXN_EMAILS_BUCKET_NAME
 
 REGION = "us-east-1"
 

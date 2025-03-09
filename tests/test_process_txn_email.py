@@ -5,8 +5,8 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from src.config import TXN_EMAILS_BUCKET_NAME
-from src.process_txn_email import lambda_handler
+from pennywise.config import TXN_EMAILS_BUCKET_NAME
+from pennywise.process_txn_email import lambda_handler
 
 
 @mock_aws()
