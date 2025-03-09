@@ -44,4 +44,4 @@ def lambda_handler(event, context):
         cleaned_response = json_match.group(1).replace("\n", "")
 
         data = json.loads(cleaned_response)
-        return data
+        print(data)
