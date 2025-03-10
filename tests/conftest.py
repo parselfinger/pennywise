@@ -4,9 +4,7 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from pennywise.config import TXN_EMAILS_BUCKET_NAME
-
-REGION = "us-east-1"
+from pennywise.config import REGION, TXN_EMAILS_BUCKET_NAME
 
 
 @pytest.fixture(scope="function")
@@ -37,3 +35,9 @@ def create_s3_bucket(s3_client):
 def setup_basic_resources(create_s3_bucket):
     create_s3_bucket(TXN_EMAILS_BUCKET_NAME)
     yield TXN_EMAILS_BUCKET_NAME
+
+
+@pytest.fixture
+def dynamodb_client():
+    with mock_aws():
+        yield boto3.client("dynamodb", region_name=REGION)

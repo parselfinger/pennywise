@@ -1,19 +1,17 @@
 from email.mime.text import MIMEText
 from unittest.mock import MagicMock, patch
 
-import boto3
 import pytest
 from moto import mock_aws
 
-from pennywise.config import TXN_EMAILS_BUCKET_NAME
+from pennywise.config import TXN_EMAILS_BUCKET_NAME, TXN_TABLE_NAME
 from pennywise.process_txn_email import lambda_handler
 
 
 @mock_aws()
 @pytest.fixture
-def s3_mock(setup_basic_resources):
+def s3_mock(setup_basic_resources, s3_client):
     """Mock S3 resource using moto."""
-    s3 = boto3.client("s3", region_name="us-east-1")
 
     email_content = MIMEText("""Hello, this is a test email.""")
     message_id = "test_message_id"
@@ -22,14 +20,31 @@ def s3_mock(setup_basic_resources):
     email_content["To"] = "recipient@example.com"
 
     # Upload the raw email to the mock S3 bucket
-    s3.put_object(
+    s3_client.put_object(
         Bucket=TXN_EMAILS_BUCKET_NAME, Key=message_id, Body=email_content.as_bytes()
     )
-    yield s3, "test_bucket", message_id
+    yield s3_client, "test_bucket", message_id
 
 
-def test_lambda_handler(s3_mock):
+@mock_aws()
+@pytest.fixture
+def transaction_table(dynamodb_client):
+    """Mock DynamoDB table using moto."""
+    table_name = TXN_TABLE_NAME
+
+    dynamodb_client.create_table(
+        TableName=table_name,
+        KeySchema=[{"AttributeName": "message_id", "KeyType": "HASH"}],
+        AttributeDefinitions=[{"AttributeName": "message_id", "AttributeType": "S"}],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+
+    yield dynamodb_client, table_name
+
+
+def test_lambda_handler(s3_mock, transaction_table):
     s3, bucket_name, message_id = s3_mock
+    dynamodb, table_name = transaction_table
 
     event = {"Records": [{"ses": {"mail": {"messageId": message_id}}}]}
 
@@ -44,12 +59,18 @@ def test_lambda_handler(s3_mock):
         "google.generativeai.GenerativeModel.generate_content",
         return_value=mock_response,
     ):
-        data = lambda_handler(event, context={})
+        lambda_handler(event, context={})
+
+        data = dynamodb.get_item(
+            TableName=table_name, Key={"message_id": {"S": message_id}}
+        )["Item"]
+
         assert data == {
-            "recipientName": "Dominic De Coco",
-            "amount": "10000.50",
-            "transactionType": "online payment",
-            "paymentMethod": "Bank transfer",
-            "date": "Jan 18, 2025",
-            "description": "One bottle of liquid luck",
+            "message_id": {"S": "test_message_id"},
+            "recipientName": {"S": "Dominic De Coco"},
+            "amount": {"S": "10000.50"},
+            "transactionType": {"S": "online payment"},
+            "paymentMethod": {"S": "Bank transfer"},
+            "date": {"S": "Jan 18, 2025"},
+            "description": {"S": "One bottle of liquid luck"},
         }

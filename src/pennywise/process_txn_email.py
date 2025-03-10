@@ -7,13 +7,18 @@ from pathlib import Path
 import boto3
 import google.generativeai as genai
 
-from pennywise.config import GEMINI_API_KEY, TXN_EMAILS_BUCKET_NAME
+from pennywise.config import (
+    GEMINI_API_KEY,
+    REGION,
+    TXN_EMAILS_BUCKET_NAME,
+    TXN_TABLE_NAME,
+)
 
 genai.configure(api_key=GEMINI_API_KEY)
 
 
 def lambda_handler(event, context):
-    s3_client = boto3.client("s3", region_name="us-east-1")
+    s3_client = boto3.client("s3", region_name=REGION)
     for record in event.get("Records", []):
         ses_message = record.get("ses", {}).get("mail", {})
         message_id = ses_message.get("messageId")
@@ -44,4 +49,10 @@ def lambda_handler(event, context):
         cleaned_response = json_match.group(1).replace("\n", "")
 
         data = json.loads(cleaned_response)
-        print(data)
+
+        # persist transaction data in DynamoDB
+        dynamodb = boto3.resource("dynamodb")
+        table = dynamodb.Table(TXN_TABLE_NAME)
+        table.put_item(Item={"message_id": message_id, **data})
+
+        print(f"Saved to DynamoDB: {data}")
