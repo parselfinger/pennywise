@@ -30,6 +30,8 @@ def lambda_handler(event, context):
         ].read()
         msg = BytesParser(policy=policy.SMTP).parsebytes(raw_email)
 
+        msg_body = msg.get_body(preferencelist=("plain")).get_content()
+
         model = genai.GenerativeModel("gemini-1.5-flash")
 
         file_path = Path(__file__).parent / "prompts/extract_transaction_details.txt"
@@ -37,7 +39,7 @@ def lambda_handler(event, context):
         with open(file_path, "r") as file:
             prompt = file.read()
 
-        prompt = prompt.replace("{msg}", str(msg))
+        prompt = prompt.replace("{msg}", str(msg_body))
         response = model.generate_content(prompt)
 
         json_match = re.search(

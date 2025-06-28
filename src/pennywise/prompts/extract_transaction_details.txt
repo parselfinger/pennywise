@@ -1,11 +1,51 @@
-Extract the transaction details from {msg} using this JSON schema:
-transactionDetails = {
-    'recipientName': 'John Doe',
-    'amount': '',
-    'transactionType': '',
-    'paymentMethod': '',
-    'date': ''
-    'description': ''
+Extract transaction details from the following message: {msg}
+
+Schema Definition:
+{
+    "amount": "number - The monetary value of the transaction (required)",
+    "transactionType": "string - Either 'credit' or 'debit' (required)",
+    "paymentMethod": "string - Method of payment (e.g., 'cash', 'card', 'bank transfer', 'check') (required)",
+    "date": "string - Transaction date in ISO 8601 format (YYYY-MM-DD) (required)",
+    "description": "string - Brief description of the transaction (required)",
+    "category": "string - Transaction category (e.g., 'food', 'transport', 'utilities') (optional)",
+    "merchant": "string - Name of the merchant/recipient (optional)"
 }
 
-return: transactionDetails
+Instructions:
+1. Extract all required fields from the message
+2. Convert amounts to numerical values (e.g., "$20.50" → 20.50)
+3. Standardize dates to ISO 8601 format
+4. If a required field cannot be determined from the message, use null
+5. Use the most appropriate category based on the description
+6. Clean and standardize merchant names when available
+
+Examples:
+Input: "Spent 25.99 at Walmart on groceries yesterday using my debit card"
+Output: {
+    "amount": 25.99,
+    "transactionType": "debit",
+    "paymentMethod": "card",
+    "date": "2024-03-19",  // Assuming today is 2024-03-20
+    "description": "Grocery purchase at Walmart",
+    "category": "food",
+    "merchant": "Walmart"
+}
+
+Input: "Received $500 bank transfer from John for rent"
+Output: {
+    "amount": 500.00,
+    "transactionType": "credit",
+    "paymentMethod": "bank transfer",
+    "date": "2024-03-20",  // Assuming today's date
+    "description": "Rent payment from John",
+    "category": "housing",
+    "merchant": "John"
+}
+
+Error Handling:
+- If the message is unclear or ambiguous, provide best-effort extraction
+- For missing required fields, use null instead of empty strings
+- For amounts in foreign currency, convert to default currency if possible
+- For dates without a year, assume the current or most recent year
+
+Return the extracted details in valid JSON format.

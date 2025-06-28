@@ -65,12 +65,12 @@ def test_lambda_handler(s3_mock, transaction_table):
             TableName=table_name, Key={"message_id": {"S": message_id}}
         )["Item"]
 
-        assert data == {
-            "message_id": {"S": "test_message_id"},
-            "recipientName": {"S": "Dominic De Coco"},
-            "amount": {"S": "10000.50"},
-            "transactionType": {"S": "online payment"},
-            "paymentMethod": {"S": "Bank transfer"},
-            "date": {"S": "Jan 18, 2025"},
-            "description": {"S": "One bottle of liquid luck"},
-        }
+    assert data == {
+        "message_id": {"S": "test_message_id"},
+        "recipientName": {"S": "Dominic De Coco"},
+        "amount": {"S": "10000.50"},
+        "transactionType": {"S": "online payment"},
+        "paymentMethod": {"S": "Bank transfer"},
+        "date": {"S": "Jan 18, 2025"},
+        "description": {"S": "One bottle of liquid luck"},
+    }
