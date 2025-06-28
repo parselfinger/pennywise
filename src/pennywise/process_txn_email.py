@@ -1,5 +1,6 @@
 import json
 import re
+from decimal import Decimal
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
@@ -15,6 +16,18 @@ from pennywise.config import (
 )
 
 genai.configure(api_key=GEMINI_API_KEY)
+
+
+def convert_floats_to_decimals(obj):
+    """Convert float values to Decimal for DynamoDB compatibility."""
+    if isinstance(obj, dict):
+        return {k: convert_floats_to_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimals(v) for v in obj]
+    elif isinstance(obj, float):
+        return Decimal(str(obj))
+    else:
+        return obj
 
 
 def lambda_handler(event, context):
@@ -51,6 +64,8 @@ def lambda_handler(event, context):
         cleaned_response = json_match.group(1).replace("\n", "")
 
         data = json.loads(cleaned_response)
+
+        data = convert_floats_to_decimals(data)
 
         # persist transaction data in DynamoDB
         dynamodb = boto3.resource("dynamodb")
