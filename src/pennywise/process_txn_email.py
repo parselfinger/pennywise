@@ -43,7 +43,12 @@ def lambda_handler(event, context):
         ].read()
         msg = BytesParser(policy=policy.SMTP).parsebytes(raw_email)
 
-        msg_body = msg.get_body(preferencelist=("plain")).get_content()
+        body = msg.get_body(preferencelist=("plain", "html"))
+        if body:
+            msg_body = body.get_content()
+        else:
+            # Fallback: get the payload directly (works for non-multipart emails)
+            msg_body = msg.get_payload()
 
         model = genai.GenerativeModel("gemini-1.5-flash")
 
