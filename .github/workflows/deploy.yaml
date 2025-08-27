@@ -39,7 +39,12 @@ jobs:
           cd package-monthly-reports &&
           zip -r ../monthly-reports-function.zip . &&
           cd ../src/pennywise &&
-          zip -g -r ../monthly-reports-function.zip .
+          # Copy the main function file to the root level with the name Lambda expects
+          cp generate_monthly_reports.py ../lambda_function.py &&
+          cd ../ &&
+          zip -g monthly-reports-function.zip lambda_function.py &&
+          # Clean up temporary file
+          rm lambda_function.py
         "
 
     - name: Upload to S3
@@ -85,5 +90,4 @@ jobs:
         # Set environment variables for the monthly reports function
         aws lambda update-function-configuration \
           --function-name generate-monthly-reports \
-          --handler generate_monthly_reports.lambda_handler \
           --environment Variables='{GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}",TXN_EMAILS_BUCKET_NAME="${{ vars.TXN_EMAILS_BUCKET_NAME }}",TXN_TABLE_NAME="${{ vars.TXN_TABLE_NAME }}",REGION="${{ vars.AWS_REGION }}",REPORTS_S3_BUCKET="${{ vars.REPORTS_S3_BUCKET }}"}'
