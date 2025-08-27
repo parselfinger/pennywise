@@ -76,6 +76,12 @@ jobs:
             --s3-key monthly_reports_function.zip \
             --region ${{ vars.AWS_REGION }}
 
+        # Wait for the function code update to complete before updating configuration
+        echo "Waiting for function code update to complete..."
+        aws lambda wait function-updated \
+            --function-name generate-monthly-reports \
+            --region ${{ vars.AWS_REGION }}
+
         # Set environment variables for the monthly reports function
         aws lambda update-function-configuration \
           --function-name generate-monthly-reports \
