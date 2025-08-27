@@ -40,8 +40,8 @@ jobs:
           zip -r ../monthly-reports-function.zip . &&
           cd ../src/pennywise &&
           # Copy the main function file to the root level with the name Lambda expects
-          cp generate_monthly_reports.py ../lambda_function.py &&
-          cd ../ &&
+          cp generate_monthly_reports.py ../../lambda_function.py &&
+          cd ../../ &&
           zip -g monthly-reports-function.zip lambda_function.py &&
           # Clean up temporary file
           rm lambda_function.py
