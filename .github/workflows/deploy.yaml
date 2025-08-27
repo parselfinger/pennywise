@@ -38,10 +38,12 @@ jobs:
           python3.12 -m pip install --target package-monthly-reports -r requirements.txt &&
           cd package-monthly-reports &&
           zip -r ../monthly-reports-function.zip . &&
-          cd ../src/pennywise &&
+          cd ../src &&
+          # Include the entire pennywise package structure
+          zip -g -r ../monthly-reports-function.zip pennywise/ &&
+          cd ../ &&
           # Copy the main function file to the root level with the name Lambda expects
-          cp generate_monthly_reports.py ../../lambda_function.py &&
-          cd ../../ &&
+          cp src/pennywise/generate_monthly_reports.py lambda_function.py &&
           zip -g monthly-reports-function.zip lambda_function.py &&
           # Clean up temporary file
           rm lambda_function.py
