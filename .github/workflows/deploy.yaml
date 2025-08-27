@@ -87,6 +87,19 @@ jobs:
             --function-name generate-monthly-reports \
             --region ${{ vars.AWS_REGION }}
 
+        # Update the function handler to use lambda_function.lambda_handler
+        echo "Updating function handler..."
+        aws lambda update-function-configuration \
+            --function-name generate-monthly-reports \
+            --handler lambda_function.lambda_handler \
+            --region ${{ vars.AWS_REGION }}
+
+        # Wait for the handler update to complete
+        echo "Waiting for handler update to complete..."
+        aws lambda wait function-updated \
+            --function-name generate-monthly-reports \
+            --region ${{ vars.AWS_REGION }}
+
         # Set environment variables for the monthly reports function
         aws lambda update-function-configuration \
           --function-name generate-monthly-reports \
