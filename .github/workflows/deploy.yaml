@@ -38,7 +38,7 @@ jobs:
           python3.12 -m pip install --target package-monthly-reports -r requirements.txt &&
           cd package-monthly-reports &&
           zip -r ../monthly-reports-function.zip . &&
-          cd ../src &&
+          cd ../src/pennywise &&
           zip -g -r ../monthly-reports-function.zip .
         "
 
@@ -85,4 +85,5 @@ jobs:
         # Set environment variables for the monthly reports function
         aws lambda update-function-configuration \
           --function-name generate-monthly-reports \
+          --handler generate_monthly_reports.lambda_handler \
           --environment Variables='{GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}",TXN_EMAILS_BUCKET_NAME="${{ vars.TXN_EMAILS_BUCKET_NAME }}",TXN_TABLE_NAME="${{ vars.TXN_TABLE_NAME }}",REGION="${{ vars.AWS_REGION }}",REPORTS_S3_BUCKET="${{ vars.REPORTS_S3_BUCKET }}"}'
