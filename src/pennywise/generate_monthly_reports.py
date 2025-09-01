@@ -247,6 +247,12 @@ def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_pref
         merchant = item.get("merchant", "Unknown")
         description = item.get("description", "")
 
+        if not all([date_str, amount, category, merchant]):
+            print(
+                f"⚠️  Warning: Skipping transaction with missing essential data: {description}"
+            )
+            continue
+
         # Add to monthly data
         monthly_data[month]["transactions"].append(
             {
