@@ -174,7 +174,7 @@ def create_bar_chart(data, title, width=6, height=3):
 
 
 def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_prefix=""):
-    """Generate monthly transaction reports from DynamoDB data."""
+    """Generate monthly transaction report for the previous month from DynamoDB data."""
 
     # Initialize S3 client if bucket is provided
     s3_client = None
@@ -184,6 +184,17 @@ def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_pref
     # Create output directory (for temporary storage)
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
+
+    # Calculate the previous month (e.g., if we're in September, generate August report)
+    current_date = datetime.now()
+    if current_date.month == 1:
+        # January - previous month is December of previous year
+        previous_month = f"{current_date.year - 1}-12"
+    else:
+        # Other months - previous month is current year, previous month
+        previous_month = f"{current_date.year}-{current_date.month - 1:02d}"
+
+    print(f"📅 Generating report for previous month: {previous_month}")
 
     # Scan all items from DynamoDB
     print("🔍 Scanning DynamoDB for transactions...")
@@ -207,19 +218,9 @@ def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_pref
 
     print(f"📊 Found {len(items)} transactions after {scan_count} scans")
 
-    # Group transactions by month
-    monthly_data = defaultdict(
-        lambda: {
-            "transactions": [],
-            "total_income": 0.0,
-            "total_expenses": 0.0,
-            "categories": defaultdict(float),
-            "merchants": defaultdict(float),
-        }
-    )
-
-    # Process each transaction
-    print(f"🔄 Processing {len(items)} transactions...")
+    # Filter transactions for the previous month only
+    previous_month_transactions = []
+    print(f"🔄 Processing transactions for {previous_month}...")
     processed_count = 0
 
     for item in items:
@@ -235,6 +236,10 @@ def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_pref
             print(
                 f"⚠️  Warning: Could not parse date for transaction {item.get('description', 'unknown')}"
             )
+            continue
+
+        # Only process transactions for the previous month
+        if month != previous_month:
             continue
 
         # Parse amount
@@ -253,8 +258,8 @@ def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_pref
             )
             continue
 
-        # Add to monthly data
-        monthly_data[month]["transactions"].append(
+        # Add to previous month transactions
+        previous_month_transactions.append(
             {
                 "date": date_str,
                 "amount": amount,
@@ -266,84 +271,77 @@ def generate_monthly_report(table, output_dir="reports", s3_bucket=None, s3_pref
             }
         )
 
-        # Update totals
-        if transaction_type == "credit":
-            monthly_data[month]["total_income"] += amount
+    print(
+        f"📊 Found {len(previous_month_transactions)} transactions for {previous_month}"
+    )
+
+    # Check if we have any transactions for the previous month
+    if not previous_month_transactions:
+        print(
+            f"⚠️  No transactions found for {previous_month}. Report generation skipped."
+        )
+        return
+
+    # Calculate summary for the previous month
+    total_income = 0.0
+    total_expenses = 0.0
+    categories = defaultdict(float)
+    merchants = defaultdict(float)
+
+    for txn in previous_month_transactions:
+        if txn["type"] == "credit":
+            total_income += txn["amount"]
         else:
             # Treat as expense (debit or any other type)
-            monthly_data[month]["total_expenses"] += abs(amount)
-            monthly_data[month]["categories"][category] += abs(amount)
-            monthly_data[month]["merchants"][merchant] += abs(amount)
+            total_expenses += abs(txn["amount"])
+            categories[txn["category"]] += abs(txn["amount"])
+            merchants[txn["merchant"]] += abs(txn["amount"])
 
-    # Generate reports for each month
-    month_count = len(monthly_data)
-    current_month = 0
+    # Calculate net income
+    net_income = total_income - total_expenses
 
-    for month, data in sorted(monthly_data.items()):
-        current_month += 1
-        print(f"📅 Generating PDF report for {month} ({current_month}/{month_count})...")
+    # Sort categories and merchants by amount
+    top_categories = sorted(categories.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_merchants = sorted(merchants.items(), key=lambda x: x[1], reverse=True)[:10]
 
-        # Calculate net income
-        net_income = data["total_income"] - data["total_expenses"]
+    # Create report
+    report = {
+        "month": previous_month,
+        "summary": {
+            "total_transactions": len(previous_month_transactions),
+            "total_income": total_income,
+            "total_expenses": total_expenses,
+            "net_income": net_income,
+        },
+        "top_categories": [
+            {"category": cat, "amount": amt} for cat, amt in top_categories
+        ],
+        "top_merchants": [
+            {"merchant": merch, "amount": amt} for merch, amt in top_merchants
+        ],
+        "transactions": previous_month_transactions,
+    }
 
-        # Sort categories and merchants by amount
-        top_categories = sorted(
-            data["categories"].items(), key=lambda x: x[1], reverse=True
-        )[:10]
-        top_merchants = sorted(
-            data["merchants"].items(), key=lambda x: x[1], reverse=True
-        )[:10]
+    print(f"📅 Generating PDF report for {previous_month}...")
 
-        # Create report
-        report = {
-            "month": month,
-            "summary": {
-                "total_transactions": len(data["transactions"]),
-                "total_income": data["total_income"],
-                "total_expenses": data["total_expenses"],
-                "net_income": net_income,
-            },
-            "top_categories": [
-                {"category": cat, "amount": amt} for cat, amt in top_categories
-            ],
-            "top_merchants": [
-                {"merchant": merch, "amount": amt} for merch, amt in top_merchants
-            ],
-            "transactions": data["transactions"],
-        }
+    # Generate PDF report
+    pdf_file = output_path / f"transaction_report_{previous_month}.pdf"
+    generate_monthly_pdf_report(
+        previous_month, report, top_categories, top_merchants, pdf_file
+    )
 
-        # Generate PDF report
-        pdf_file = output_path / f"transaction_report_{month}.pdf"
-        generate_monthly_pdf_report(
-            month, report, top_categories, top_merchants, pdf_file
-        )
+    print(f"✅ Generated PDF report: {pdf_file}")
 
-        print(f"✅ Generated PDF report: {pdf_file}")
-
-        # Upload to S3 if bucket is provided
-        if s3_client and s3_bucket:
-            s3_key = (
-                f"{s3_prefix}monthly_reports/{month}/transaction_report_{month}.pdf"
-            )
-            try:
-                s3_client.upload_file(str(pdf_file), s3_bucket, s3_key)
-                print(f"📤 Uploaded to S3: s3://{s3_bucket}/{s3_key}")
-            except Exception as e:
-                print(f"⚠️  Failed to upload to S3: {e}")
-
-    # Generate overall summary PDF
-    overall_pdf_file = output_path / "overall_summary.pdf"
-    generate_overall_pdf_summary(monthly_data, overall_pdf_file)
-    print(f"✅ Generated overall summary PDF: {overall_pdf_file}")
-
-    # Upload overall summary to S3 if bucket is provided
+    # Upload to S3 if bucket is provided
     if s3_client and s3_bucket:
-        s3_key = f"{s3_prefix}monthly_reports/overall_summary.pdf"
+        s3_key = f"{s3_prefix}monthly_reports/{previous_month}/transaction_report_{previous_month}.pdf"
         try:
-            s3_client.upload_file(str(overall_pdf_file), s3_bucket, s3_key)
+            s3_client.upload_file(str(pdf_file), s3_bucket, s3_key)
             print(f"📤 Uploaded to S3: s3://{s3_bucket}/{s3_key}")
         except Exception as e:
             print(f"⚠️  Failed to upload to S3: {e}")
+
+    print(f"✅ Monthly report generation completed for {previous_month}!")
 
 
 def generate_monthly_pdf_report(month, report, top_categories, top_merchants, pdf_file):

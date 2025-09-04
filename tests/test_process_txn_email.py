@@ -2,13 +2,11 @@ from email.mime.text import MIMEText
 from unittest.mock import MagicMock, patch
 
 import pytest
-from moto import mock_aws
 
 from pennywise.config import TXN_EMAILS_BUCKET_NAME, TXN_TABLE_NAME
 from pennywise.process_txn_email import lambda_handler
 
 
-@mock_aws()
 @pytest.fixture
 def s3_mock(setup_basic_resources, s3_client):
     """Mock S3 resource using moto."""
@@ -26,7 +24,6 @@ def s3_mock(setup_basic_resources, s3_client):
     yield s3_client, "test_bucket", message_id
 
 
-@mock_aws()
 @pytest.fixture
 def transaction_table(dynamodb_client):
     """Mock DynamoDB table using moto."""

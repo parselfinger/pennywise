@@ -1,8 +1,9 @@
 import shutil
 import tempfile
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -97,10 +98,9 @@ class TestGenerateMonthlyReport:
         """Create a mock DynamoDB table with sample data."""
         table = Mock()
 
-        # Sample transaction data
         sample_items = [
             {
-                "date": "2024-01-15",
+                "date": "2025-08-15",
                 "amount": "100.00",
                 "transactionType": "debit",
                 "category": "Food",
@@ -109,7 +109,7 @@ class TestGenerateMonthlyReport:
                 "paymentMethod": "card",
             },
             {
-                "date": "2024-01-20",
+                "date": "2025-08-20",
                 "amount": "50.00",
                 "transactionType": "debit",
                 "category": "Transport",
@@ -118,7 +118,7 @@ class TestGenerateMonthlyReport:
                 "paymentMethod": "card",
             },
             {
-                "date": "2024-01-25",
+                "date": "2025-08-25",
                 "amount": "2000.00",
                 "transactionType": "credit",
                 "category": "Salary",
@@ -127,7 +127,7 @@ class TestGenerateMonthlyReport:
                 "paymentMethod": "transfer",
             },
             {
-                "date": "2024-02-01",
+                "date": "2025-08-01",
                 "amount": "75.00",
                 "transactionType": "debit",
                 "category": "Entertainment",
@@ -137,7 +137,6 @@ class TestGenerateMonthlyReport:
             },
         ]
 
-        # Mock scan responses
         table.scan.return_value = {"Items": sample_items, "Count": len(sample_items)}
 
         return table
@@ -149,35 +148,40 @@ class TestGenerateMonthlyReport:
         yield temp_dir
         shutil.rmtree(temp_dir)
 
-    def test_generate_monthly_report(self, mock_table, temp_output_dir):
+    @patch("pennywise.generate_monthly_reports.datetime")
+    def test_generate_monthly_report(self, mock_datetime, mock_table, temp_output_dir):
         """Test the complete monthly report generation."""
+
+        mock_datetime.now.return_value = datetime(2025, 9, 1)
+        mock_datetime.strptime = datetime.strptime
+        mock_datetime.strftime = datetime.strftime
+
         generate_monthly_report(mock_table, temp_output_dir)
 
-        # Check that files were created
         output_path = Path(temp_output_dir)
 
-        # Should have monthly PDF reports
-        assert (output_path / "transaction_report_2024-01.pdf").exists()
-        assert (output_path / "transaction_report_2024-02.pdf").exists()
+        assert (output_path / "transaction_report_2025-08.pdf").exists()
 
-        # Should have overall summary PDF
-        assert (output_path / "overall_summary.pdf").exists()
+        # Check that PDF file is not empty (basic file size check)
+        assert (output_path / "transaction_report_2025-08.pdf").stat().st_size > 0
 
-        # Check that PDF files are not empty (basic file size check)
-        assert (output_path / "transaction_report_2024-01.pdf").stat().st_size > 0
-        assert (output_path / "transaction_report_2024-02.pdf").stat().st_size > 0
-        assert (output_path / "overall_summary.pdf").stat().st_size > 0
-
-    def test_generate_monthly_report_with_pagination(self, temp_output_dir):
+    @patch("pennywise.generate_monthly_reports.datetime")
+    def test_generate_monthly_report_with_pagination(
+        self, mock_datetime, temp_output_dir
+    ):
         """Test report generation with paginated DynamoDB results."""
+        mock_datetime.now.return_value = datetime(2025, 9, 1)
+        mock_datetime.strptime = datetime.strptime
+        mock_datetime.strftime = datetime.strftime
+
         table = Mock()
 
-        # Mock paginated responses
+        # Mock paginated responses for the previous month (August 2025)
         table.scan.side_effect = [
             {
                 "Items": [
                     {
-                        "date": "2024-01-15",
+                        "date": "2025-08-15",
                         "amount": "100.00",
                         "transactionType": "debit",
                         "category": "Food",
@@ -191,7 +195,7 @@ class TestGenerateMonthlyReport:
             {
                 "Items": [
                     {
-                        "date": "2024-01-20",
+                        "date": "2025-08-20",
                         "amount": "50.00",
                         "transactionType": "debit",
                         "category": "Transport",
@@ -205,77 +209,37 @@ class TestGenerateMonthlyReport:
 
         generate_monthly_report(table, temp_output_dir)
 
-        # Verify both items were processed
         output_path = Path(temp_output_dir)
 
-        # Check that PDF files were created
-        jan_pdf = output_path / "transaction_report_2024-01.pdf"
-        assert jan_pdf.exists(), "January PDF report not created"
-        assert jan_pdf.stat().st_size > 0, "January PDF report is empty"
+        aug_pdf = output_path / "transaction_report_2025-08.pdf"
+        assert aug_pdf.exists(), "August PDF report not created"
+        assert aug_pdf.stat().st_size > 0, "August PDF report is empty"
 
+    @patch("pennywise.generate_monthly_reports.datetime")
     def test_generate_monthly_report_with_pdf_output_only(
-        self, mock_table, temp_output_dir
+        self, mock_datetime, mock_table, temp_output_dir
     ):
         """Test the complete monthly report generation and verify PDF files."""
+        mock_datetime.now.return_value = datetime(2025, 9, 1)
+        mock_datetime.strptime = datetime.strptime
+        mock_datetime.strftime = datetime.strftime
+
         generate_monthly_report(mock_table, temp_output_dir)
 
         # Check that files were created
         output_path = Path(temp_output_dir)
 
-        # Check that PDF files were created
-        jan_pdf = output_path / "transaction_report_2024-01.pdf"
-        feb_pdf = output_path / "transaction_report_2024-02.pdf"
-        overall_pdf = output_path / "overall_summary.pdf"
+        # Check that PDF file was created for the previous month only
+        aug_pdf = output_path / "transaction_report_2025-08.pdf"
 
-        # Verify the PDF files exist
-        assert jan_pdf.exists(), "January PDF report not created"
-        assert feb_pdf.exists(), "February PDF report not created"
-        assert overall_pdf.exists(), "Overall summary PDF not created"
+        # Verify the PDF file exists
+        assert aug_pdf.exists(), "August PDF report not created"
+        assert aug_pdf.stat().st_size > 0, "August PDF report is empty"
 
-        # Verify they are actual PDF files (check first few bytes)
-        for pdf_file in [jan_pdf, feb_pdf, overall_pdf]:
-            with open(pdf_file, "rb") as f:
-                header = f.read(4)
-                assert header == b"%PDF", f"{pdf_file} is not a valid PDF file"
-
-    def test_generate_monthly_report_with_pdf_output(self, mock_table, temp_output_dir):
-        """Test the complete monthly report generation and display the PDF files created."""
-        generate_monthly_report(mock_table, temp_output_dir)
-
-        # Check that PDF files were created
-        output_path = Path(temp_output_dir)
-
-        # Should have monthly PDF reports
-        jan_pdf = output_path / "transaction_report_2024-01.pdf"
-        feb_pdf = output_path / "transaction_report_2024-02.pdf"
-        overall_pdf = output_path / "overall_summary.pdf"
-
-        print("\n📄 Generated PDF files:")
-        print(f"   📊 January 2024: {jan_pdf}")
-        print(f"   📊 February 2024: {feb_pdf}")
-        print(f"   📊 Overall Summary: {overall_pdf}")
-
-        # Check file sizes
-        if jan_pdf.exists():
-            print(f"   📏 January PDF size: {jan_pdf.stat().st_size:,} bytes")
-        if feb_pdf.exists():
-            print(f"   📏 February PDF size: {feb_pdf.stat().st_size:,} bytes")
-        if overall_pdf.exists():
-            print(f"   📏 Overall PDF size: {overall_pdf.stat().st_size:,} bytes")
-
-        # Verify the files exist
-        assert jan_pdf.exists(), "January PDF report not created"
-        assert feb_pdf.exists(), "February PDF report not created"
-        assert overall_pdf.exists(), "Overall summary PDF not created"
-
-        # Verify they are actual PDF files (check first few bytes)
-        for pdf_file in [jan_pdf, feb_pdf, overall_pdf]:
-            with open(pdf_file, "rb") as f:
-                header = f.read(4)
-                assert header == b"%PDF", f"{pdf_file} is not a valid PDF file"
-
-        print("\n✅ All PDF reports generated successfully!")
-        print(f"📁 Reports saved in: {temp_output_dir}")
+        # Verify it is an actual PDF file (check first few bytes)
+        with open(aug_pdf, "rb") as f:
+            header = f.read(4)
+            assert header == b"%PDF", f"{aug_pdf} is not a valid PDF file"
 
 
 if __name__ == "__main__":
