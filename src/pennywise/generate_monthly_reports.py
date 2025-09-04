@@ -418,6 +418,7 @@ def generate_monthly_pdf_report(month, report, top_categories, top_merchants, pd
     # Charts
     if top_categories:
         story.append(Paragraph("Spending by Category", heading_style))
+        story.append(Spacer(1, 100))
         categories_dict = dict(top_categories[:8])
         pie_chart = create_pie_chart(categories_dict, "Spending by Category")
         if pie_chart:
@@ -426,6 +427,7 @@ def generate_monthly_pdf_report(month, report, top_categories, top_merchants, pd
 
     if top_merchants:
         story.append(Paragraph("Spending by Merchant", heading_style))
+        story.append(Spacer(1, 40))
         merchants_dict = dict(top_merchants[:8])
         bar_chart = create_bar_chart(merchants_dict, "Spending by Merchant")
         if bar_chart:
